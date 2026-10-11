@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/task-workspace.css' %}?v=2">{% endblock %}
+
+{% block title %}{{ task.title }}{% endblock %}
+
+{% block content %}
+{% if task.event_work %}<div class="alert alert-light">Задача мероприятия <a href="{% url 'meropriyatie_detail' task.event_work.event_id %}">{{ task.event_work.event.title }}</a> · {{ task.event_work.get_stage_display }}</div>{% endif %}
+<div class="container task-detail-workspace">
+    <a class="task-back-link" href="{% url 'task_list' %}"><i class="bi bi-arrow-left"></i> К задачам</a>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ task.title }}</h1>
+        <div>
+            {% if task.is_archived %}
+            <span class="badge bg-secondary me-2"><i class="bi bi-archive"></i> В архиве</span>
+            {% endif %}
+            {% if user.is_director %}
+            <form method="post" action="{% url 'task_archive_toggle' task.id %}" class="d-inline">
+                {% csrf_token %}
+                {% if task.is_archived %}
+                <button type="submit" class="btn btn-success me-2">
+                    <i class="bi bi-archive"></i> Вернуть из архива
+                </button>
+                {% else %}
+                <button type="submit" class="btn btn-outline-secondary me-2">
+                    <i class="bi bi-archive"></i> В архив
+                </button>
+                {% endif %}
+            </form>
+            {% endif %}
+            {% if can_edit_task %}
+            <a href="{% url 'task_update' task.id %}" class="btn btn-secondary">
+                <i class="bi bi-pencil"></i> Редактировать
+            </a>
+            {% endif %}
+            {% if user.is_director %}
+            <a href="{% url 'task_delete' task.id %}" class="btn btn-danger ms-2">
+                <i class="bi bi-trash"></i> Удалить
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Описание -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="bi bi-file-text"></i> Описание</h5>
+                </div>
+                <div class="card-body">
+                    <p>{{ task.description|default:"Описание отсутствует"|linebreaks }}</p>
+                </div>
+            </div>
+
+            <!-- Подзадачи -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="bi bi-list-nested"></i> Подзадачи</h5>
+                    {% if user.is_director or user.is_head %}
+                    <a href="{% url 'task_create' %}?parent={{ task.id }}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-circle"></i> Добавить подзадачу
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if task.is_parent_task %}
+                        <div class="mb-3">
+                            <strong>Прогресс выполнения:</strong>
+                            <div class="progress mt-2">
+                                <div class="progress-bar" role="progressbar" style="width: {{ task.get_progress_percentage }}%">
+                                    {{ task.get_progress_percentage }}%
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    {% if subtasks %}
+                        <div class="list-group">
+                            {% for subtask in subtasks %}
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">
+                                            <a href="{% url 'task_detail' subtask.id %}">{{ subtask.title }}</a>
+                                        </h6>
+                                        <p class="mb-1 text-muted small">{{ subtask.description|truncatewords:20|default:"Без описания" }}</p>
+                                        <div class="d-flex gap-2 mt-2">
+                                            <span class="badge bg-{% if subtask.status == 'completed' %}success{% elif subtask.status == 'in_progress' %}primary{% elif subtask.status == 'assigned' %}info{% else %}warning{% endif %}">
+                                                {{ subtask.get_status_display }}
+                                            </span>
+                                            <span class="badge bg-{% if subtask.priority == 'urgent' %}danger{% elif subtask.priority == 'high' %}warning{% else %}info{% endif %}">
+                                                {{ subtask.get_priority_display }}
+                                            </span>
+                                            {% if subtask.assigned_to.all %}
+                                            <small class="text-muted">
+                                                <i class="bi bi-person"></i>
+                                                {% for assignee in subtask.assigned_to.all %}
+                                                    {{ assignee.get_full_name|default:assignee.username }}{% if not forloop.last %}, {% endif %}
+                                                {% endfor %}
+                                            </small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="ms-3">
+                                        {% if subtask.deadline %}
+                                        <small class="text-muted d-block">
+                                            <i class="bi bi-calendar"></i> {{ subtask.deadline|date:"d.m.Y" }}
+                                        </small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-0">Подзадач нет</p>
+                        {% if user.is_director or user.is_head %}
+                        <a href="{% url 'task_create' %}?parent={{ task.id }}" class="btn btn-sm btn-outline-primary mt-2">
+                            <i class="bi bi-plus-circle"></i> Создать первую подзадачу
+                        </a>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Родительская задача (если это подзадача) -->
+            {% if visible_parent_task %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="bi bi-arrow-up"></i> Родительская задача</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">
+                        <a href="{% url 'task_detail' visible_parent_task.id %}">
+                            <i class="bi bi-link-45deg"></i> {{ visible_parent_task.title }}
+                        </a>
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Комментарии -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="bi bi-chat-dots"></i> Комментарии</h5>
+                </div>
+                <div class="card-body">
+                    {% for comment in comments %}
+                    <div class="mb-3 p-3 bg-light rounded">
+                        <div class="d-flex justify-content-between">
+                            <strong>{{ comment.author.get_full_name|default:comment.author.username }}</strong>
+                            <small class="text-muted">{{ comment.created_at|date:"d.m.Y H:i" }}</small>
+                        </div>
+                        <p class="mb-0 mt-2">{{ comment.text|linebreaks }}</p>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted">Комментариев пока нет</p>
+                    {% endfor %}
+
+                    <form method="post" class="mt-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="add_comment" value="1">
+                        {{ comment_form.text }}
+                        <button type="submit" class="btn btn-primary mt-2">
+                            <i class="bi bi-send"></i> Добавить комментарий
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Файлы -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-paperclip"></i> Прикрепленные файлы</h5>
+                </div>
+                <div class="card-body">
+                    {% for file in files %}
+                    <div class="mb-2">
+                        <a href="{{ file.file.url }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-file-earmark"></i> {{ file.file.name|slice:"20:" }}
+                        </a>
+                        <small class="text-muted ms-2">
+                            Загружено {{ file.uploaded_by.get_full_name|default:file.uploaded_by.username }} 
+                            {{ file.uploaded_at|date:"d.m.Y H:i" }}
+                        </small>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted">Файлов нет</p>
+                    {% endfor %}
+
+                    <form method="post" enctype="multipart/form-data" class="mt-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="upload_file" value="1">
+                        {{ file_form.file }}
+                        {{ file_form.description }}
+                        <button type="submit" class="btn btn-primary mt-2">
+                            <i class="bi bi-upload"></i> Загрузить файл
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Информация о задаче -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="bi bi-info-circle"></i> Информация</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Статус:</strong><br>
+                        <span class="badge bg-{% if task.status == 'completed' %}success{% elif task.status == 'in_progress' %}primary{% elif task.status == 'assigned' %}info{% else %}warning{% endif %}">
+                            {{ task.get_status_display }}
+                        </span>
+                        {% if task.status_locked_by_director %}
+                        <span class="small text-muted ms-1" title="Статус зафиксирован руководителем"><i class="bi bi-lock"></i></span>
+                        {% endif %}
+                    </p>
+                    <p><strong>Приоритет:</strong><br>
+                        <span class="badge bg-{% if task.priority == 'urgent' %}danger{% elif task.priority == 'high' %}warning{% else %}info{% endif %}">
+                            {{ task.get_priority_display }}
+                        </span>
+                    </p>
+                    <p><strong>Отдел:</strong><br>{{ task.department.name }}</p>
+                    <p><strong>Исполнители и статусы:</strong><br>
+                        {% if assignments %}
+                            <ul class="list-unstyled mb-0">
+                                {% for a in assignments %}
+                                <li class="mb-1">
+                                    <span class="badge bg-{% if a.status == 'completed' %}success{% elif a.status == 'in_progress' %}primary{% elif a.status == 'assigned' %}info{% else %}warning{% endif %} me-1">
+                                        {{ a.get_status_display }}
+                                    </span>
+                                    <i class="bi bi-person"></i>
+                                    {{ a.user.get_full_name|default:a.user.username }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <span class="text-muted">Не назначен</span>
+                        {% endif %}
+                    </p>
+                    <p><strong>Создал:</strong><br>
+                        {{ task.created_by.get_full_name|default:task.created_by.username }}
+                    </p>
+                    {% if visible_parent_task %}
+                    <p><strong>Родительская задача:</strong><br>
+                        <a href="{% url 'task_detail' visible_parent_task.id %}">
+                            <i class="bi bi-link-45deg"></i> {{ visible_parent_task.title }}
+                        </a>
+                    </p>
+                    {% endif %}
+                    {% if task.is_parent_task %}
+                    <p><strong>Подзадачи:</strong><br>
+                        <span class="badge bg-info">
+                            <i class="bi bi-list-nested"></i> {{ task.subtasks.count }} подзадач
+                        </span>
+                        <div class="progress mt-2" style="height: 20px;">
+                            <div class="progress-bar" role="progressbar" style="width: {{ task.get_progress_percentage }}%">
+                                {{ task.get_progress_percentage }}%
+                            </div>
+                        </div>
+                    </p>
+                    {% endif %}
+                    <p><strong>Дедлайн:</strong><br>
+                        {{ task.deadline|date:"d.m.Y H:i"|default:"Не установлен" }}
+                        {% if task.is_overdue %}
+                        <span class="badge bg-danger">Просрочено</span>
+                        {% endif %}
+                    </p>
+                    <p><strong>Создано:</strong><br>{{ task.created_at|date:"d.m.Y H:i" }}</p>
+                    {% if task.completed_at %}
+                    <p><strong>Завершено:</strong><br>{{ task.completed_at|date:"d.m.Y H:i" }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Мой статус (для исполнителя) или общий статус (для директора) -->
+            {% if can_change_status %}
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-arrow-repeat"></i> {% if my_assignment %}Мой статус{% else %}Статус задачи{% endif %}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="update_status" value="1"><input type="hidden" name="version" value="{{ status_version }}">
+                        <select name="status" class="form-select mb-2">
+                            <option value="assigned" {% if my_assignment %}{% if my_assignment.status == 'assigned' %}selected{% endif %}{% else %}{% if task.status == 'assigned' %}selected{% endif %}{% endif %}>Назначено</option>
+                            <option value="in_progress" {% if my_assignment %}{% if my_assignment.status == 'in_progress' %}selected{% endif %}{% else %}{% if task.status == 'in_progress' %}selected{% endif %}{% endif %}>В работе</option>
+                            <option value="pending" {% if my_assignment %}{% if my_assignment.status == 'pending' %}selected{% endif %}{% else %}{% if task.status == 'pending' %}selected{% endif %}{% endif %}>На проверке</option>
+{% if can_complete_task %}                            <option value="completed" {% if my_assignment %}{% if my_assignment.status == 'completed' %}selected{% endif %}{% else %}{% if task.status == 'completed' %}selected{% endif %}{% endif %}>Завершено</option>{% endif %}
+                        </select>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-check"></i> Обновить
+                        </button>
+                    </form>
+                    {% if my_assignment %}
+                    {% if task.status_locked_by_director %}
+                    <p class="small text-warning mb-0 mt-2"><i class="bi bi-lock"></i> Общий статус задачи зафиксирован руководителем и не меняется автоматически по отметкам исполнителей.</p>
+                    {% else %}
+                    <p class="small text-muted mb-0 mt-2">Общий статус задачи пересчитывается по статусам всех исполнителей.</p>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,48 @@
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATA_DIR: /app/data
+    ports:
+      - "127.0.0.1:8080:8000"
+    volumes:
+      - workspace-data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1',8000),2).close()"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+  mailings:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATA_DIR: /app/data
+    command: ["python", "deploy/mailings.py"]
+    depends_on:
+      web:
+        condition: service_healthy
+    volumes:
+      - workspace-data:/app/data
+  proxy:
+    image: caddy:2
+    profiles: ["server"]
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Run install.py first}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+volumes:
+  workspace-data:
+  caddy-data:
+  caddy-config:

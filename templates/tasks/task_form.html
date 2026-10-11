@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="bi bi-file-earmark-plus"></i> {{ title }}</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="{{ form.title.id_for_label }}" class="form-label">Название задачи *</label>
+                            {{ form.title }}
+                            {% if form.title.errors %}
+                            <div class="text-danger">{{ form.title.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">Описание</label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                            <div class="text-danger">{{ form.description.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.status.id_for_label }}" class="form-label">Статус</label>
+                                {{ form.status }}
+                                {% if form.status.errors %}
+                                <div class="text-danger">{{ form.status.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.priority.id_for_label }}" class="form-label">Приоритет</label>
+                                {{ form.priority }}
+                                {% if form.priority.errors %}
+                                <div class="text-danger">{{ form.priority.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 mb-3" id="task-form-departments-block">
+                                <label class="form-label task-form-section-label" for="departments-checkbox-container">Отделы *</label>
+                                <div class="department-checkbox-container" id="departments-checkbox-container">
+                                    {{ form.departments }}
+                                </div>
+                                {% if form.departments.help_text %}
+                                <small class="form-text text-muted">{{ form.departments.help_text }}</small>
+                                {% endif %}
+                                {% if form.departments.errors %}
+                                <div class="text-danger">{{ form.departments.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Исполнители</label>
+                            <p class="text-muted small">Показываются только сотрудники из выбранных отделов.</p>
+                            <div class="task-assigned-checkbox-container">
+                                <p class="text-muted small mb-2" id="assignees-hint">Выберите один или несколько отделов выше, чтобы увидеть список исполнителей.</p>
+                                <div class="task-assigned-checkbox-list" id="assigned-to-list">
+                                    {% for user in form.assigned_to.field.queryset %}
+                                    <div class="task-assigned-checkbox-item" data-department-id="{{ user.department_id|default:'' }}">
+                                        <input type="checkbox" 
+                                               class="form-check-input task-assigned-checkbox" 
+                                               name="assigned_to" 
+                                               id="assigned-{{ user.id }}" 
+                                               value="{{ user.id }}"
+                                               {% if form.instance.pk and user in form.instance.assigned_to.all %}checked{% endif %}>
+                                        <label class="form-check-label" for="assigned-{{ user.id }}">
+                                            {{ user.get_full_name|default:user.username }}
+                                            {% if user.department %} <span class="text-muted">({{ user.department.name }})</span>{% endif %}
+                                        </label>
+                                    </div>
+                                    {% empty %}
+                                    <p class="text-muted" id="no-assignees-msg">Нет доступных исполнителей в выбранных отделах.</p>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectAllAssigned()">Выбрать всех</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAllAssigned()">Снять выбор</button>
+                            </div>
+                            {% if form.assigned_to.errors %}
+                            <div class="text-danger">{{ form.assigned_to.errors }}</div>
+                            {% endif %}
+                            {% if form.assigned_to.help_text %}
+                            <small class="form-text text-muted">Можно выбрать несколько исполнителей</small>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.deadline.id_for_label }}" class="form-label">Дедлайн</label>
+                            {{ form.deadline }}
+                            {% if form.deadline.errors %}
+                            <div class="text-danger">{{ form.deadline.errors }}</div>
+                            {% endif %}
+                        </div>
+                        {% if form.parent_task %}
+                        <div class="mb-3">
+                            <label for="{{ form.parent_task.id_for_label }}" class="form-label">Родительская задача</label>
+                            {{ form.parent_task }}
+                            {% if form.parent_task.errors %}
+                            <div class="text-danger">{{ form.parent_task.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Выберите родительскую задачу, если это подзадача. Оставьте пустым для создания основной задачи.
+                            </small>
+                        </div>
+                        {% endif %}
+                        {% if not form.instance.pk %}
+                        <div class="mb-3">
+                            <label for="id_files" class="form-label">
+                                <i class="bi bi-paperclip"></i> Файлы
+                            </label>
+                            <input type="file" name="files" id="id_files" class="form-control" multiple accept="*/*">
+                            <small class="form-text text-muted">
+                                <i class="bi bi-info-circle"></i> Можно выбрать несколько файлов (Ctrl+Click или Cmd+Click для множественного выбора)
+                            </small>
+                        </div>
+                        {% endif %}
+                        {% if parent_task %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> 
+                            Вы создаете подзадачу для задачи: 
+                            <strong><a href="{% url 'task_detail' parent_task.id %}">{{ parent_task.title }}</a></strong>
+                        </div>
+                        {% endif %}
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'task_list' %}" class="btn btn-secondary">Отмена</a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check"></i> Сохранить
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Стили для выбора исполнителей */
+    .task-assigned-checkbox-container {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 10px;
+        background: #f9fafb;
+    }
+
+    .task-assigned-checkbox-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .task-assigned-checkbox-item {
+        display: flex;
+        align-items: center;
+        padding: 8px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+
+    .task-assigned-checkbox-item:hover {
+        background: #f3f4f6;
+        border-color: #3b82f6;
+    }
+
+    .task-assigned-checkbox-item .form-check-input {
+        margin-right: 10px;
+        margin-top: 0;
+        cursor: pointer;
+        width: 18px;
+        height: 18px;
+    }
+
+    .task-assigned-checkbox-item .form-check-label {
+        cursor: pointer;
+        flex: 1;
+        margin: 0;
+        font-size: 14px;
+        color: #374151;
+        user-select: none;
+    }
+
+    .task-assigned-checkbox-item .form-check-input:checked ~ .form-check-label {
+        color: #1f2937;
+        font-weight: 500;
+    }
+
+    .task-assigned-checkbox-item .form-check-input:checked {
+        background-color: #3b82f6;
+        border-color: #3b82f6;
+    }
+
+    /* Заголовок блока «Отделы» — без лишних отступов и transform */
+    #task-form-departments-block > .task-form-section-label {
+        display: block;
+        padding: 0;
+        margin-bottom: 0.5rem;
+        transform: none;
+        height: auto;
+    }
+
+    /* Стили для выбора отделов (чекбоксы) */
+    .department-checkbox-container {
+        max-height: 320px;
+        overflow-y: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 10px;
+        background: #f9fafb;
+    }
+    .department-checkbox-container ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .department-checkbox-container li {
+        display: flex;
+        align-items: center;
+        padding: 10px 12px;
+        min-height: 44px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+    .department-checkbox-container li:hover {
+        background: #f3f4f6;
+        border-color: #3b82f6;
+    }
+    .department-checkbox-container .form-check-input {
+        margin-right: 12px;
+        cursor: pointer;
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+    }
+    .department-checkbox-container label {
+        cursor: pointer;
+        margin: 0;
+        padding: 0;
+        flex: 1;
+        font-size: 14px;
+        color: #374151;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        transform: none;
+    }
+</style>
+
+<script>
+(function() {
+    var departmentsContainer = document.getElementById('id_departments');
+    var assigneeItems = document.querySelectorAll('#assigned-to-list .task-assigned-checkbox-item');
+    var noAssigneesMsg = document.getElementById('no-assignees-msg');
+    var assigneesHint = document.getElementById('assignees-hint');
+
+    function getSelectedDepartmentIds() {
+        var checked = document.querySelectorAll('input[name="departments"]:checked');
+        return Array.prototype.map.call(checked, function(el) { return el.value; });
+    }
+
+    function filterAssigneesByDepartments() {
+        var selected = getSelectedDepartmentIds();
+        var hasVisible = false;
+        assigneeItems.forEach(function(item) {
+            var deptId = (item.getAttribute('data-department-id') || '').toString();
+            var show = selected.length > 0 && deptId && selected.indexOf(deptId) !== -1;
+            item.style.display = show ? '' : 'none';
+            if (show) hasVisible = true;
+        });
+        if (noAssigneesMsg) noAssigneesMsg.style.display = (assigneeItems.length === 0 || !hasVisible) ? '' : 'none';
+        if (assigneesHint) assigneesHint.style.display = selected.length > 0 ? 'none' : '';
+    }
+
+    if (departmentsContainer) {
+        departmentsContainer.addEventListener('change', filterAssigneesByDepartments);
+        filterAssigneesByDepartments();
+    }
+})();
+
+function selectAllAssigned() {
+    document.querySelectorAll('#assigned-to-list .task-assigned-checkbox-item:not([style*="display: none"]) .task-assigned-checkbox').forEach(function(checkbox) {
+        checkbox.checked = true;
+    });
+}
+
+function deselectAllAssigned() {
+    document.querySelectorAll('#assigned-to-list .task-assigned-checkbox-item:not([style*="display: none"]) .task-assigned-checkbox').forEach(function(checkbox) {
+        checkbox.checked = false;
+    });
+}
+</script>
+{% endblock %}
+

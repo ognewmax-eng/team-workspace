@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Создать чек-лист{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="bi bi-plus-circle"></i> Создать чек-лист</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="checklistForm">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Название форума</label>
+                            <input type="text" class="form-control" id="title" name="title" 
+                                   value="Планирование форума" required>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Выберите шаблон</label>
+                            <div class="row g-3">
+                                {% for template_key, template_data in templates.items %}
+                                <div class="col-md-4">
+                                    <div class="card h-100 template-card" style="cursor: pointer;">
+                                        <div class="card-body">
+                                            <div class="form-check">
+                                                <input class="form-check-input template-radio" type="radio" 
+                                                       name="template" id="template_{{ template_key }}" 
+                                                       value="{{ template_key }}" 
+                                                       {% if template_key == 'full' %}checked{% endif %}
+                                                       onchange="toggleCustomBlocks()">
+                                                <label class="form-check-label w-100" for="template_{{ template_key }}">
+                                                    <strong>{{ template_data.name }}</strong>
+                                                    <p class="text-muted small mb-0 mt-1">{{ template_data.description }}</p>
+                                                    {% if template_data.blocks %}
+                                                    <div class="mt-2">
+                                                        <small class="text-muted">
+                                                            <i class="bi bi-list-ul"></i> {{ template_data.blocks|length }} блоков
+                                                        </small>
+                                                    </div>
+                                                    {% endif %}
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3" id="customBlocksSection" style="display: none;">
+                            <label class="form-label fw-bold">Выберите нужные блоки</label>
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="row g-2">
+                                        {% for block_title, block_code in available_blocks %}
+                                        <div class="col-md-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input block-checkbox" type="checkbox" 
+                                                       name="blocks" id="block_{{ block_code }}" 
+                                                       value="{{ block_code }}">
+                                                <label class="form-check-label" for="block_{{ block_code }}">
+                                                    {{ block_title }}
+                                                </label>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="mt-2">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectAllBlocks()">
+                                            Выбрать все
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAllBlocks()">
+                                            Снять выбор
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="participants" class="form-label">Участники команды</label>
+                            <select class="form-select" id="participants" name="participants" multiple size="8">
+                                {% for user in users %}
+                                <option value="{{ user.id }}">
+                                    {{ user.get_full_name|default:user.username }}
+                                    {% if user.department %} ({{ user.department.name }}){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">Выберите участников команды (удерживайте Ctrl/Cmd для множественного выбора)</small>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">Создать</button>
+                            <a href="{% url 'forum_checklist_list' %}" class="btn btn-secondary">Отмена</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .template-card {
+        transition: all 0.2s;
+        border: 2px solid #e5e7eb;
+    }
+    .template-card:hover {
+        border-color: #3b82f6;
+        box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+    }
+    .template-card .form-check-input:checked ~ .form-check-label {
+        color: #3b82f6;
+    }
+    .template-card .form-check-input:checked {
+        background-color: #3b82f6;
+        border-color: #3b82f6;
+    }
+</style>
+
+<script>
+function toggleCustomBlocks() {
+    const customSection = document.getElementById('customBlocksSection');
+    const customTemplate = document.getElementById('template_custom');
+    
+    if (customTemplate && customTemplate.checked) {
+        customSection.style.display = 'block';
+    } else {
+        customSection.style.display = 'none';
+    }
+}
+
+function selectAllBlocks() {
+    document.querySelectorAll('.block-checkbox').forEach(checkbox => {
+        checkbox.checked = true;
+    });
+}
+
+function deselectAllBlocks() {
+    document.querySelectorAll('.block-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+}
+
+// Валидация формы при отправке
+document.getElementById('checklistForm').addEventListener('submit', function(e) {
+    const customTemplate = document.getElementById('template_custom');
+    if (customTemplate && customTemplate.checked) {
+        const checkedBlocks = document.querySelectorAll('.block-checkbox:checked');
+        if (checkedBlocks.length === 0) {
+            e.preventDefault();
+            alert('Пожалуйста, выберите хотя бы один блок для кастомного шаблона');
+            return false;
+        }
+    }
+});
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    toggleCustomBlocks();
+});
+</script>
+{% endblock %}

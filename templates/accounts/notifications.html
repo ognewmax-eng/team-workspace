@@ -1,0 +1,319 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Уведомления - {{ organization_name }}{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="bi bi-bell"></i> Уведомления
+                    {% if unread_count > 0 %}
+                    <span class="badge bg-danger ms-2">{{ unread_count }}</span>
+                    {% endif %}
+                </h2>
+                <div class="d-flex gap-2">
+                    {% if unread_count > 0 %}
+                    <a href="{% url 'mark_all_notifications_read' %}" class="btn btn-outline-primary" id="mark-all-read-btn">
+                        <i class="bi bi-check-all"></i> Отметить все как прочитанные
+                    </a>
+                    {% endif %}
+                    {% if read_count > 0 %}
+                    <button type="button" class="btn btn-outline-danger" id="delete-read-btn" data-read-count="{{ read_count }}">
+                        <i class="bi bi-trash"></i> Удалить прочитанные ({{ read_count }})
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if notifications %}
+            <div class="list-group">
+                {% for notification in notifications %}
+                <div class="list-group-item {% if not notification.is_read %}list-group-item-action bg-light border-start border-primary border-3{% endif %}" 
+                     data-notification-id="{{ notification.id }}">
+                    <div class="d-flex w-100 justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center mb-2">
+                                {% if notification.notification_type == 'task_assigned' %}
+                                    <i class="bi bi-clipboard-check text-primary me-2"></i>
+                                {% elif notification.notification_type == 'task_comment' %}
+                                    <i class="bi bi-chat-dots text-info me-2"></i>
+                                {% elif notification.notification_type == 'task_status_changed' %}
+                                    <i class="bi bi-arrow-repeat text-success me-2"></i>
+                                {% endif %}
+                                <h6 class="mb-0">
+                                    {{ notification.get_notification_type_display }}
+                                    {% if not notification.is_read %}
+                                    <span class="badge bg-primary ms-2">Новое</span>
+                                    {% endif %}
+                                </h6>
+                            </div>
+                            <p class="mb-2">{{ notification.message }}</p>
+                            {% if notification.related_task %}
+                            <a href="{% url 'task_detail' notification.related_task.id %}" class="text-decoration-none">
+                                <i class="bi bi-arrow-right-circle"></i> Перейти к задаче
+                            </a>
+                            {% endif %}
+                        </div>
+                        <div class="d-flex flex-column align-items-end">
+                            <small class="text-muted mb-2">
+                                {{ notification.created_at|date:"d.m.Y H:i" }}
+                            </small>
+                            {% if not notification.is_read %}
+                            <a href="{% url 'mark_notification_read' notification.id %}" 
+                               class="btn btn-sm btn-outline-primary mark-read-btn">
+                                <i class="bi bi-check"></i> Прочитано
+                            </a>
+                            {% else %}
+                            <span class="badge bg-secondary">Прочитано</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> У вас пока нет уведомлений.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработка кнопки "Прочитано"
+    document.querySelectorAll('.mark-read-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const url = this.getAttribute('href');
+            const notificationItem = this.closest('.list-group-item');
+            
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    notificationItem.classList.remove('bg-light', 'border-start', 'border-primary', 'border-3');
+                    const badge = notificationItem.querySelector('.badge');
+                    if (badge) {
+                        badge.remove();
+                    }
+                    const btnContainer = notificationItem.querySelector('.d-flex.flex-column');
+                    if (btnContainer) {
+                        btnContainer.innerHTML = `
+                            <small class="text-muted mb-2">${notificationItem.querySelector('small').textContent}</small>
+                            <span class="badge bg-secondary">Прочитано</span>
+                        `;
+                    }
+                    // Обновляем счетчик уведомлений
+                    updateNotificationCount();
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                // В случае ошибки просто перезагружаем страницу
+                window.location.href = url;
+            });
+        });
+    });
+
+    // Обработка кнопки "Отметить все как прочитанные"
+    const markAllReadBtn = document.getElementById('mark-all-read-btn');
+    if (markAllReadBtn) {
+        markAllReadBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const url = this.getAttribute('href');
+            
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Перезагружаем страницу для обновления всех уведомлений
+                    window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                window.location.href = url;
+            });
+        });
+    }
+
+    // Обработка кнопки "Удалить прочитанные"
+    const deleteReadBtn = document.getElementById('delete-read-btn');
+    if (deleteReadBtn) {
+        deleteReadBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const readCount = this.getAttribute('data-read-count');
+            
+            if (!confirm(`Вы уверены, что хотите удалить ${readCount} прочитанных уведомлений? Это действие нельзя отменить.`)) {
+                return;
+            }
+            
+            // Показываем индикатор загрузки
+            const originalText = this.innerHTML;
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Удаление...';
+            
+            // Получаем CSRF токен из cookie или из скрытого поля
+            let csrftoken = getCookie('csrftoken');
+            if (!csrftoken) {
+                const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+                if (csrfInput) {
+                    csrftoken = csrfInput.value;
+                }
+            }
+            
+            if (!csrftoken) {
+                alert('Ошибка: CSRF токен не найден. Пожалуйста, обновите страницу.');
+                return;
+            }
+            
+            fetch('{% url "delete_read_notifications" %}', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrftoken,
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Удаляем прочитанные уведомления из DOM с анимацией
+                    let removedCount = 0;
+                    document.querySelectorAll('.list-group-item').forEach(function(item) {
+                        const badge = item.querySelector('.badge.bg-secondary');
+                        if (badge && badge.textContent.trim() === 'Прочитано') {
+                            removedCount++;
+                            item.style.transition = 'opacity 0.3s, transform 0.3s';
+                            item.style.opacity = '0';
+                            item.style.transform = 'translateX(-20px)';
+                            setTimeout(() => {
+                                item.remove();
+                            }, 300);
+                        }
+                    });
+                    
+                    // Обновляем счетчик уведомлений
+                    updateNotificationCount();
+                    
+                    // Обновляем или скрываем кнопку
+                    setTimeout(() => {
+                        const remainingRead = document.querySelectorAll('.badge.bg-secondary').length;
+                        if (remainingRead === 0) {
+                            // Скрываем кнопку, если прочитанных больше нет
+                            deleteReadBtn.style.transition = 'opacity 0.3s';
+                            deleteReadBtn.style.opacity = '0';
+                            setTimeout(() => {
+                                deleteReadBtn.remove();
+                            }, 300);
+                        } else {
+                            // Обновляем текст кнопки
+                            deleteReadBtn.textContent = `Удалить прочитанные (${remainingRead})`;
+                            deleteReadBtn.setAttribute('data-read-count', remainingRead);
+                            deleteReadBtn.disabled = false;
+                            deleteReadBtn.innerHTML = `<i class="bi bi-trash"></i> Удалить прочитанные (${remainingRead})`;
+                        }
+                    }, 400);
+                    
+                    // Показываем сообщение об успехе
+                    showMessage('success', data.message || `Удалено ${data.deleted_count} прочитанных уведомлений`);
+                    
+                    // Проверяем, остались ли уведомления вообще
+                    setTimeout(() => {
+                        const allNotifications = document.querySelectorAll('.list-group-item').length;
+                        if (allNotifications === 0) {
+                            const listGroup = document.querySelector('.list-group');
+                            if (listGroup) {
+                                listGroup.innerHTML = `
+                                    <div class="alert alert-info">
+                                        <i class="bi bi-info-circle"></i> У вас пока нет уведомлений.
+                                    </div>
+                                `;
+                            }
+                        }
+                    }, 500);
+                } else {
+                    showMessage('error', 'Ошибка при удалении уведомлений');
+                    this.disabled = false;
+                    this.innerHTML = originalText;
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                showMessage('error', 'Ошибка при удалении уведомлений');
+                this.disabled = false;
+                this.innerHTML = originalText;
+            });
+        });
+    }
+
+    // Функция получения CSRF токена
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Функция показа сообщения
+    function showMessage(type, message) {
+        const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+        const icon = type === 'success' ? 'bi-check-circle' : 'bi-exclamation-triangle';
+        const alert = document.createElement('div');
+        alert.className = `alert ${alertClass} alert-dismissible fade show`;
+        alert.innerHTML = `
+            <i class="bi ${icon}"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.querySelector('.container').insertBefore(alert, document.querySelector('.container').firstChild);
+        
+        // Автоматически скрываем через 5 секунд
+        setTimeout(() => {
+            alert.remove();
+        }, 5000);
+    }
+
+    // Функция обновления счетчика уведомлений
+    function updateNotificationCount() {
+        fetch('{% url "notifications_count_ajax" %}')
+            .then(response => response.json())
+            .then(data => {
+                const badge = document.getElementById('notification-badge');
+                if (badge) {
+                    if (data.count > 0) {
+                        badge.textContent = data.count;
+                        badge.style.display = 'inline-block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            });
+    }
+});
+</script>
+{% endblock %}
+

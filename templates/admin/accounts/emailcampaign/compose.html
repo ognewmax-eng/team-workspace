@@ -1,0 +1,12 @@
+{% extends 'admin/base_site.html' %}{% load static %}
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'css/mailings-v9.css' %}">{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Администрирование</a> › <a href="{% url 'admin:accounts_emailcampaign_changelist' %}">Email-рассылки</a> › Подготовка</div>{% endblock %}
+{% block content %}
+<div class="mail-workspace"><p class="mail-intro">Подготовьте письмо и проверьте адреса. На этом шаге письма не отправляются.</p>
+{% if not config_present %}<p class="mail-notice">Сначала настройте подключение почты на хостинге: <code>manage.py configure_email</code>.</p>{% endif %}
+<section class="mail-panel"><p><strong>Отправитель:</strong> {{ sender }}</p><form method="post">{% csrf_token %}
+{% if form.non_field_errors %}<div class="mail-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+{% for field in form %}<div class="mail-field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<p class="mail-help">{{ field.help_text }}</p>{% endif %}{% if field.errors %}<div class="mail-errors" role="alert">{{ field.errors }}</div>{% endif %}</div>{% endfor %}
+<div class="mail-actions"><button type="submit" class="mail-button">Проверить письмо и получателей</button><a href="{% url 'admin:accounts_emailcampaign_changelist' %}">Вернуться к рассылкам</a></div>
+</form></section></div>
+{% endblock %}

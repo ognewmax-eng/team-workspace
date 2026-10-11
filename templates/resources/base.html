@@ -1,0 +1,4 @@
+{% extends 'base.html' %}{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/resource-workspace.css' %}?v=5">{% endblock %}
+{% block content %}<div class="resource-workspace">{% block resource_content %}{% endblock %}</div>{% endblock %}
+{% block extra_js %}{% block resource_scripts %}{% endblock %}{% endblock %}

@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Регистрация — {{ organization_name }}{% endblock %}
+{% block content %}
+<div class="auth-shell auth-shell-wide">
+    <a class="auth-brand" href="{% url 'login' %}">{{ organization_name }}<span>.</span><small>{{ organization_name }}</small></a>
+    <section class="auth-panel" aria-labelledby="auth-title">
+        <h1 id="auth-title">Присоединиться к команде</h1>
+        <p class="auth-intro">Заполните данные для регистрации. Поля со звёздочкой обязательны.</p>
+        <form method="post">
+            {% csrf_token %}
+            {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+            {% for field in form.hidden_fields %}{{ field }}{% if field.errors %}<div class="text-danger">{{ field.errors }}</div>{% endif %}{% endfor %}
+            <div class="auth-form-grid">
+            {% for field in form.visible_fields %}
+                <div class="auth-field">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+                    {{ field }}
+                    {% if field.errors %}<div class="auth-error" role="alert">{{ field.errors }}</div>{% endif %}
+                    {% if field.help_text %}<div class="auth-help">{{ field.help_text|safe }}</div>{% endif %}
+                </div>
+            {% endfor %}
+            </div>
+            <div class="auth-notice"><i class="bi bi-info-circle" aria-hidden="true"></i><span>После регистрации администратор должен одобрить ваш аккаунт. Доступ появится после его активации.</span></div>
+            <button class="btn btn-primary auth-submit" type="submit">Зарегистрироваться</button>
+        </form>
+        <p class="auth-footnote">Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a></p>
+    </section>
+</div>
+{% endblock %}

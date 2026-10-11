@@ -1,0 +1,1261 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Чек-лист: {{ checklist.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --status-not-started: #6b7280;
+        --status-in-progress: #3b82f6;
+        --status-on-review: #f59e0b;
+        --status-completed: #10b981;
+        --status-approved: #10b981;
+    }
+
+    .forum-checklist-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* Фиксированная панель навигации */
+    .checklist-navbar {
+        position: sticky;
+        top: 0;
+        background: white;
+        border-bottom: 2px solid #e5e7eb;
+        padding: 15px 20px;
+        margin: -20px -20px 20px -20px;
+        z-index: 100;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .checklist-navbar-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .nav-anchors {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .nav-anchor {
+        padding: 8px 16px;
+        background: #f3f4f6;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        text-decoration: none;
+        color: #374151;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .nav-anchor:hover {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+    }
+
+    .progress-summary {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 10px 20px;
+        background: #f9fafb;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+    }
+
+    .progress-text {
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .progress-bar-container {
+        width: 200px;
+        height: 8px;
+        background: #e5e7eb;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #3b82f6, #10b981);
+        transition: width 0.3s;
+    }
+
+    /* Фильтры и сортировка */
+    .checklist-controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .filter-btn, .sort-select {
+        padding: 8px 16px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        background: white;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .filter-btn:hover, .filter-btn.active {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+    }
+
+    .sort-select {
+        padding: 8px 12px;
+    }
+
+    /* Блоки */
+    .checklist-block {
+        margin-bottom: 40px;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 20px;
+        background: white;
+    }
+
+    .block-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .block-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1f2937;
+        margin: 0;
+    }
+
+    .block-status-selector {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .status-option {
+        padding: 6px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        background: white;
+        cursor: pointer;
+        font-size: 13px;
+        transition: all 0.2s;
+    }
+
+    .status-option:hover {
+        border-color: #3b82f6;
+    }
+
+    .status-option.active {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+    }
+
+    .status-option[data-status="not_started"].active {
+        background: var(--status-not-started);
+        border-color: var(--status-not-started);
+    }
+
+    .status-option[data-status="in_progress"].active {
+        background: var(--status-in-progress);
+        border-color: var(--status-in-progress);
+    }
+
+    .status-option[data-status="on_review"].active {
+        background: var(--status-on-review);
+        border-color: var(--status-on-review);
+    }
+
+    .status-option[data-status="approved"].active {
+        background: var(--status-approved);
+        border-color: var(--status-approved);
+    }
+
+    /* Задачи */
+    .tasks-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .task-card {
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 15px;
+        background: white;
+        transition: all 0.2s;
+        position: relative;
+    }
+
+    .task-card:hover {
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .task-card.status-not_started {
+        border-left: 4px solid var(--status-not-started);
+    }
+
+    .task-card.status-in_progress {
+        border-left: 4px solid var(--status-in-progress);
+    }
+
+    .task-card.status-on_review {
+        border-left: 4px solid var(--status-on-review);
+    }
+
+    .task-card.status-completed {
+        border-left: 4px solid var(--status-completed);
+        background: #f0fdf4;
+    }
+
+    .task-card.overdue {
+        border-left-color: #ef4444;
+        background: #fef2f2;
+    }
+
+    .task-main {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .task-checkbox {
+        margin-top: 4px;
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+
+    .task-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .task-title {
+        font-size: 15px;
+        color: #1f2937;
+        margin: 0 0 10px 0;
+        line-height: 1.5;
+    }
+
+    .task-meta {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-top: 10px;
+    }
+
+    .task-field {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: #6b7280;
+    }
+
+    .task-field select,
+    .task-field input[type="date"],
+    .task-field input[type="text"] {
+        padding: 4px 8px;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        font-size: 13px;
+    }
+
+    .task-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+    }
+
+    .task-action-btn {
+        padding: 4px 10px;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        background: white;
+        cursor: pointer;
+        font-size: 12px;
+        color: #6b7280;
+        transition: all 0.2s;
+    }
+
+    .task-action-btn:hover {
+        background: #f3f4f6;
+        border-color: #9ca3af;
+    }
+
+    .task-comment-field,
+    .task-file-field {
+        margin-top: 10px;
+        padding: 10px;
+        background: #f9fafb;
+        border-radius: 6px;
+        display: none;
+    }
+
+    .task-comment-field.active,
+    .task-file-field.active {
+        display: block;
+    }
+
+    .task-comment-field textarea {
+        width: 100%;
+        min-height: 60px;
+        padding: 8px;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        font-size: 13px;
+        resize: vertical;
+    }
+    
+    .task-comment-field button,
+    .task-file-field button {
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    .add-task-btn {
+        margin-top: 15px;
+        padding: 10px 20px;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+
+    .add-task-btn:hover {
+        background: #2563eb;
+    }
+
+    /* Экспорт/Импорт */
+    .export-import-controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .export-btn, .import-btn {
+        padding: 8px 16px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        background: white;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .export-btn:hover {
+        background: #10b981;
+        color: white;
+        border-color: #10b981;
+    }
+
+    .import-btn:hover {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+    }
+
+    .import-input {
+        display: none;
+    }
+
+    /* Адаптивность */
+    @media (max-width: 768px) {
+        .checklist-navbar-content {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .nav-anchors {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .task-meta {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .block-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px;
+        }
+    }
+
+    /* Стили для панели участников с чекбоксами */
+    .participants-checkbox-container {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 15px;
+        background: #f9fafb;
+    }
+
+    .participants-checkbox-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .participant-checkbox-item {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+
+    .participant-checkbox-item:hover {
+        background: #f3f4f6;
+        border-color: #3b82f6;
+    }
+
+    .participant-checkbox-item .form-check-input {
+        margin-right: 12px;
+        margin-top: 0;
+        cursor: pointer;
+        width: 18px;
+        height: 18px;
+    }
+
+    .participant-checkbox-item .form-check-label {
+        cursor: pointer;
+        flex: 1;
+        margin: 0;
+        font-size: 14px;
+        color: #374151;
+        user-select: none;
+    }
+
+    .participant-checkbox-item .form-check-input:checked ~ .form-check-label {
+        color: #1f2937;
+        font-weight: 500;
+    }
+
+    .participant-checkbox-item .form-check-input:checked {
+        background-color: #3b82f6;
+        border-color: #3b82f6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="forum-checklist-container">
+    <!-- Фиксированная панель навигации -->
+    <div class="checklist-navbar">
+        <div class="checklist-navbar-content">
+            <div class="nav-anchors">
+                {% for block in blocks %}
+                <a href="#block-{{ block.id }}" class="nav-anchor">{{ block.title|truncatewords:3 }}</a>
+                {% endfor %}
+            </div>
+            <div class="progress-summary">
+                <span class="progress-text" id="progress-text">Выполнено: <span id="completed-count">0</span> из <span id="total-count">0</span> задач</span>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Управление участниками -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Участники команды</h5>
+        </div>
+        <div class="card-body">
+            <div class="participants-checkbox-container">
+                <div class="participants-checkbox-list">
+                    {% for user in all_users %}
+                    <div class="participant-checkbox-item">
+                        <input type="checkbox" 
+                               class="form-check-input participant-checkbox" 
+                               id="participant-{{ user.id }}" 
+                               value="{{ user.id }}"
+                               {% if user in checklist.participants.all %}checked{% endif %}>
+                        <label class="form-check-label" for="participant-{{ user.id }}">
+                            {{ user.get_full_name|default:user.username }}
+                            {% if user.department %} <span class="text-muted">({{ user.department.name }})</span>{% endif %}
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectAllParticipants()">Выбрать всех</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAllParticipants()">Снять выбор</button>
+                <button class="btn btn-sm btn-primary" onclick="updateParticipants()">Сохранить участников</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Фильтры и сортировка -->
+    <div class="checklist-controls">
+        <button class="filter-btn" onclick="filterMyTasks(event)">Показать только мои задачи</button>
+        <button class="filter-btn" onclick="filterOverdue(event)">Показать просроченные</button>
+        <button class="filter-btn" onclick="clearFilters(event)">Сбросить фильтры</button>
+        <select class="sort-select" id="sort-select" onchange="sortTasks()">
+            <option value="">Сортировка...</option>
+            <option value="status">По статусу</option>
+            <option value="deadline">По сроку</option>
+            <option value="responsible">По ответственному</option>
+        </select>
+        <div class="export-import-controls">
+            <button class="export-btn" onclick="exportData()">Экспорт JSON</button>
+            <button class="import-btn" onclick="document.getElementById('import-input').click()">Импорт JSON</button>
+            <input type="file" id="import-input" class="import-input" accept=".json" onchange="importData(event)">
+        </div>
+    </div>
+
+    <!-- Блоки чек-листа -->
+    {% for block in blocks %}
+    <div class="checklist-block" id="block-{{ block.id }}" data-block-id="{{ block.id }}">
+        <div class="block-header">
+            <h2 class="block-title">{{ block.title }}</h2>
+            <div class="block-status-selector">
+                <div class="status-option {% if block.status == 'not_started' %}active{% endif %}" 
+                     data-status="not_started" onclick="updateBlockStatus({{ block.id }}, 'not_started')">
+                    Не начато
+                </div>
+                <div class="status-option {% if block.status == 'in_progress' %}active{% endif %}" 
+                     data-status="in_progress" onclick="updateBlockStatus({{ block.id }}, 'in_progress')">
+                    В работе
+                </div>
+                <div class="status-option {% if block.status == 'on_review' %}active{% endif %}" 
+                     data-status="on_review" onclick="updateBlockStatus({{ block.id }}, 'on_review')">
+                    На согласовании
+                </div>
+                <div class="status-option {% if block.status == 'approved' %}active{% endif %}" 
+                     data-status="approved" onclick="updateBlockStatus({{ block.id }}, 'approved')">
+                    Утверждено
+                </div>
+            </div>
+        </div>
+
+        <div class="tasks-container" data-block-id="{{ block.id }}">
+            {% for task in block.tasks.all %}
+            <div class="task-card status-{{ task.status }} {% if task.is_overdue %}overdue{% endif %}" 
+                 id="task-{{ task.id }}"
+                 data-task-id="{{ task.id }}" data-status="{{ task.status }}" 
+                 data-responsible-id="{% if task.responsible %}{{ task.responsible.id }}{% endif %}" 
+                 data-deadline="{{ task.deadline|date:'Y-m-d'|default:'' }}">
+                <div class="task-main">
+                    <input type="checkbox" class="task-checkbox" {% if task.is_completed %}checked{% endif %} 
+                           onchange="updateTask({{ task.id }}, 'is_completed', this.checked)">
+                    <div class="task-content">
+                        <p class="task-title">{{ task.title }}</p>
+                        <div class="task-meta">
+                            <div class="task-field">
+                                <label>Ответственный:</label>
+                                <select onchange="updateTask({{ task.id }}, 'responsible', this.value)">
+                                    <option value="">Не назначен</option>
+                                    {% for participant in checklist.participants.all %}
+                                    <option value="{{ participant.id }}" {% if task.responsible == participant %}selected{% endif %}>
+                                        {{ participant.get_full_name|default:participant.username }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="task-field">
+                                <label>Статус:</label>
+                                <select onchange="updateTask({{ task.id }}, 'status', this.value)">
+                                    <option value="not_started" {% if task.status == 'not_started' %}selected{% endif %}>Не начато</option>
+                                    <option value="in_progress" {% if task.status == 'in_progress' %}selected{% endif %}>В работе</option>
+                                    <option value="on_review" {% if task.status == 'on_review' %}selected{% endif %}>На проверке</option>
+                                    <option value="completed" {% if task.status == 'completed' %}selected{% endif %}>Выполнено</option>
+                                </select>
+                            </div>
+                            <div class="task-field">
+                                <label>Срок:</label>
+                                <input type="date" value="{{ task.deadline|date:'Y-m-d'|default:'' }}" 
+                                       onchange="updateTask({{ task.id }}, 'deadline', this.value)">
+                            </div>
+                        </div>
+                        <div class="task-actions">
+                            <button class="task-action-btn" onclick="toggleComment({{ task.id }})">
+                                <i class="bi bi-chat-left-text"></i> Комментарий
+                            </button>
+                            <button class="task-action-btn" onclick="toggleFile({{ task.id }})">
+                                <i class="bi bi-paperclip"></i> Файл
+                            </button>
+                        </div>
+                        <div class="task-comment-field" id="comment-{{ task.id }}">
+                            <div class="comments-list" id="comments-list-{{ task.id }}">
+                                {% for comment in task.comments.all %}
+                                <div class="comment-message">
+                                    <div class="comment-header">
+                                        <strong>{{ comment.author.get_full_name|default:comment.author.username }}</strong>
+                                        <small class="text-muted">{{ comment.created_at|date:"d.m.Y H:i" }}</small>
+                                    </div>
+                                    <div class="comment-text">{{ comment.text }}</div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="comment-input-group">
+                                <textarea id="comment-text-{{ task.id }}" placeholder="Введите комментарий..." rows="2"></textarea>
+                                <button class="btn btn-sm btn-primary mt-2" onclick="saveComment({{ task.id }})">
+                                    <i class="bi bi-send"></i> Отправить
+                                </button>
+                            </div>
+                        </div>
+                        <div class="task-file-field" id="file-{{ task.id }}">
+                            {% if task.file_name %}
+                            <div class="mb-2">
+                                <a href="{{ task.file_url }}" target="_blank" class="text-primary">
+                                    <i class="bi bi-file-earmark"></i> {{ task.file_name }}
+                                </a>
+                                {% if task.file_sent_at %}
+                                <small class="text-muted d-block mt-1">
+                                    <i class="bi bi-clock"></i> Отправлено: {{ task.file_sent_at|date:"d.m.Y H:i" }}
+                                </small>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            <input type="file" id="file-input-{{ task.id }}" class="form-control form-control-sm mb-2">
+                            <button class="btn btn-sm btn-primary" onclick="saveFile({{ task.id }})">
+                                <i class="bi bi-send"></i> Отправить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-muted">Задач пока нет. Добавьте первую задачу.</p>
+            {% endfor %}
+        </div>
+
+        <button class="add-task-btn" onclick="addTask({{ block.id }})">
+            <i class="bi bi-plus-circle"></i> Добавить задачу
+        </button>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+// Функция для получения CSRF токена
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const CHECKLIST_ID = {{ checklist.id }};
+const PARTICIPANTS = {{ participants_json|safe }};
+let currentFilter = null;
+let currentSort = null;
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Чек-лист форума инициализирован. CHECKLIST_ID:', CHECKLIST_ID);
+    loadFromLocalStorage();
+    updateProgress();
+    saveToLocalStorage();
+    
+    // Проверяем, что все функции определены
+    if (typeof updateTask === 'undefined') console.error('Функция updateTask не определена');
+    if (typeof addTask === 'undefined') console.error('Функция addTask не определена');
+    if (typeof updateBlockStatus === 'undefined') console.error('Функция updateBlockStatus не определена');
+    if (typeof updateParticipants === 'undefined') console.error('Функция updateParticipants не определена');
+    if (typeof filterMyTasks === 'undefined') console.error('Функция filterMyTasks не определена');
+    if (typeof filterOverdue === 'undefined') console.error('Функция filterOverdue не определена');
+    if (typeof clearFilters === 'undefined') console.error('Функция clearFilters не определена');
+    if (typeof sortTasks === 'undefined') console.error('Функция sortTasks не определена');
+    if (typeof exportData === 'undefined') console.error('Функция exportData не определена');
+    if (typeof importData === 'undefined') console.error('Функция importData не определена');
+});
+
+// Обновление задачи
+function updateTask(taskId, field, value) {
+    const formData = new FormData();
+    formData.append('action', 'update_task');
+    formData.append('task_id', taskId);
+    formData.append(field, value);
+
+    // Получаем CSRF токен
+    const csrftoken = getCookie('csrftoken') || '{{ csrf_token }}';
+    
+    fetch(`/events/forum-checklist/${CHECKLIST_ID}/ajax/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken
+        },
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Обновляем визуальное состояние
+            const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+            if (taskCard) {
+                if (field === 'is_completed') {
+                    if (value) {
+                        taskCard.classList.add('status-completed');
+                    } else {
+                        taskCard.classList.remove('status-completed');
+                    }
+                } else if (field === 'status') {
+                    taskCard.className = taskCard.className.replace(/status-\w+/g, '');
+                    taskCard.classList.add(`status-${value}`);
+                    taskCard.setAttribute('data-status', value);
+                } else if (field === 'comment' && data.comment_sent_at) {
+                    // Обновляем отображение даты отправки комментария
+                    const commentField = document.getElementById(`comment-${taskId}`);
+                    let sentAtElement = commentField.querySelector('.text-muted');
+                    if (!sentAtElement) {
+                        sentAtElement = document.createElement('small');
+                        sentAtElement.className = 'text-muted d-block mt-1';
+                        const textarea = commentField.querySelector('textarea');
+                        textarea.parentNode.insertBefore(sentAtElement, textarea.nextSibling);
+                    }
+                    sentAtElement.innerHTML = `<i class="bi bi-clock"></i> Отправлено: ${data.comment_sent_at}`;
+                }
+            }
+            updateProgress();
+            saveToLocalStorage();
+        } else {
+            console.error('Ошибка обновления задачи:', data.error || 'Неизвестная ошибка');
+            alert('Ошибка: ' + (data.error || 'Не удалось обновить задачу'));
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        alert('Ошибка при обновлении задачи. Проверьте консоль для деталей.');
+    });
+}
+
+// Добавление задачи
+function addTask(blockId) {
+    const title = prompt('Введите название задачи:');
+    if (!title) return;
+
+    const formData = new FormData();
+    formData.append('action', 'create_task');
+    formData.append('block_id', blockId);
+    formData.append('title', title);
+
+    // Получаем CSRF токен
+    const csrftoken = getCookie('csrftoken') || '{{ csrf_token }}';
+    
+    fetch(`/events/forum-checklist/${CHECKLIST_ID}/ajax/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken
+        },
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            location.reload(); // Перезагружаем для отображения новой задачи
+        } else {
+            console.error('Ошибка создания задачи:', data.error || 'Неизвестная ошибка');
+            alert('Ошибка: ' + (data.error || 'Не удалось создать задачу'));
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        alert('Ошибка при создании задачи. Проверьте консоль для деталей.');
+    });
+}
+
+// Обновление статуса блока
+function updateBlockStatus(blockId, status) {
+    const formData = new FormData();
+    formData.append('action', 'update_block_status');
+    formData.append('block_id', blockId);
+    formData.append('status', status);
+
+    // Получаем CSRF токен
+    const csrftoken = getCookie('csrftoken') || '{{ csrf_token }}';
+    
+    fetch(`/events/forum-checklist/${CHECKLIST_ID}/ajax/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken
+        },
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Обновляем визуальное состояние
+            const block = document.querySelector(`[data-block-id="${blockId}"]`);
+            if (block) {
+                const options = block.querySelectorAll('.status-option');
+                options.forEach(opt => {
+                    opt.classList.remove('active');
+                    if (opt.getAttribute('data-status') === status) {
+                        opt.classList.add('active');
+                    }
+                });
+            }
+            saveToLocalStorage();
+        } else {
+            console.error('Ошибка обновления статуса блока:', data.error || 'Неизвестная ошибка');
+            alert('Ошибка: ' + (data.error || 'Не удалось обновить статус блока'));
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        alert('Ошибка при обновлении статуса блока. Проверьте консоль для деталей.');
+    });
+}
+
+// Обновление участников
+function updateParticipants() {
+    const checkboxes = document.querySelectorAll('.participant-checkbox:checked');
+    const selectedIds = Array.from(checkboxes).map(checkbox => checkbox.value);
+    
+    const formData = new FormData();
+    formData.append('action', 'update_participants');
+    selectedIds.forEach(id => {
+        formData.append('participants', id);
+    });
+
+    // Получаем CSRF токен
+    const csrftoken = getCookie('csrftoken') || '{{ csrf_token }}';
+    
+    fetch(`/events/forum-checklist/${CHECKLIST_ID}/ajax/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken
+        },
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            alert('Участники обновлены');
+            location.reload();
+        } else {
+            console.error('Ошибка обновления участников:', data.error || 'Неизвестная ошибка');
+            alert('Ошибка: ' + (data.error || 'Не удалось обновить участников'));
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        alert('Ошибка при обновлении участников. Проверьте консоль для деталей.');
+    });
+}
+
+// Выбрать всех участников
+function selectAllParticipants() {
+    document.querySelectorAll('.participant-checkbox').forEach(checkbox => {
+        checkbox.checked = true;
+    });
+}
+
+// Снять выбор со всех участников
+function deselectAllParticipants() {
+    document.querySelectorAll('.participant-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+}
+
+// Переключение комментария
+function toggleComment(taskId) {
+    const commentField = document.getElementById(`comment-${taskId}`);
+    commentField.classList.toggle('active');
+}
+
+// Переключение файла
+function toggleFile(taskId) {
+    const fileField = document.getElementById(`file-${taskId}`);
+    fileField.classList.toggle('active');
+}
+
+// Сохранение комментария
+function saveComment(taskId) {
+    const commentText = document.getElementById(`comment-text-${taskId}`).value.trim();
+    if (!commentText) {
+        alert('Введите комментарий');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('action', 'add_comment');
+    formData.append('task_id', taskId);
+    formData.append('comment', commentText);
+
+    // Получаем CSRF токен
+    const csrftoken = getCookie('csrftoken') || '{{ csrf_token }}';
+    
+    fetch(`/events/forum-checklist/${CHECKLIST_ID}/ajax/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken
+        },
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Очищаем поле ввода
+            document.getElementById(`comment-text-${taskId}`).value = '';
+            
+            // Добавляем новый комментарий в список
+            const commentsList = document.getElementById(`comments-list-${taskId}`);
+            const commentDiv = document.createElement('div');
+            commentDiv.className = 'comment-message';
+            commentDiv.innerHTML = `
+                <div class="comment-header">
+                    <strong>${data.comment.author}</strong>
+                    <small class="text-muted">${data.comment.created_at}</small>
+                </div>
+                <div class="comment-text">${data.comment.text}</div>
+            `;
+            commentsList.appendChild(commentDiv);
+            
+            // Прокручиваем к новому комментарию
+            commentDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+            alert('Ошибка: ' + (data.error || 'Не удалось отправить комментарий'));
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        alert('Ошибка при отправке комментария. Проверьте консоль для деталей.');
+    });
+}
+
+// Сохранение файла
+function saveFile(taskId) {
+    const fileInput = document.getElementById(`file-input-${taskId}`);
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('Пожалуйста, выберите файл');
+        return;
+    }
+    
+    uploadFile(taskId, file);
+}
+
+// Загрузка файла
+function uploadFile(taskId, file) {
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('action', 'upload_file');
+    formData.append('task_id', taskId);
+    formData.append('file', file);
+
+    // Получаем CSRF токен
+    const csrftoken = getCookie('csrftoken') || '{{ csrf_token }}';
+    
+    fetch(`/events/forum-checklist/${CHECKLIST_ID}/ajax/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Обновляем отображение файла
+            const fileField = document.getElementById(`file-${taskId}`);
+            let fileLink = fileField.querySelector('a');
+            if (fileLink) {
+                fileLink.href = data.file_url;
+                fileLink.innerHTML = `<i class="bi bi-file-earmark"></i> ${data.file_name}`;
+            } else {
+                const fileDiv = document.createElement('div');
+                fileDiv.className = 'mb-2';
+                fileDiv.innerHTML = `<a href="${data.file_url}" target="_blank" class="text-primary">
+                    <i class="bi bi-file-earmark"></i> ${data.file_name}
+                </a>`;
+                const fileInput = fileField.querySelector('input[type="file"]');
+                fileField.insertBefore(fileDiv, fileInput);
+            }
+            // Очищаем поле выбора файла
+            const fileInput = document.getElementById(`file-input-${taskId}`);
+            if (fileInput) {
+                fileInput.value = '';
+            }
+            // Обновляем отображение даты отправки файла
+            if (data.file_sent_at) {
+                const fileField = document.getElementById(`file-${taskId}`);
+                let fileLink = fileField.querySelector('a');
+                if (fileLink) {
+                    let sentAtElement = fileLink.nextElementSibling;
+                    if (!sentAtElement || !sentAtElement.classList.contains('text-muted')) {
+                        sentAtElement = document.createElement('small');
+                        sentAtElement.className = 'text-muted d-block mt-1';
+                        fileLink.parentNode.insertBefore(sentAtElement, fileLink.nextSibling);
+                    }
+                    sentAtElement.innerHTML = `<i class="bi bi-clock"></i> Отправлено: ${data.file_sent_at}`;
+                }
+            }
+            saveToLocalStorage();
+        } else {
+            alert('Ошибка загрузки файла: ' + (data.error || 'Неизвестная ошибка'));
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        alert('Ошибка загрузки файла');
+    });
+}
+
+// Фильтрация
+function filterMyTasks(event) {
+    currentFilter = 'my';
+    const currentUser = '{{ user.id }}';
+    
+    document.querySelectorAll('.task-card').forEach(card => {
+        const responsibleId = card.getAttribute('data-responsible-id');
+        if (responsibleId === currentUser) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
+}
+
+function filterOverdue(event) {
+    currentFilter = 'overdue';
+    const today = new Date().toISOString().split('T')[0];
+    
+    document.querySelectorAll('.task-card').forEach(card => {
+        const deadline = card.getAttribute('data-deadline');
+        const status = card.getAttribute('data-status');
+        const isCompleted = card.querySelector('.task-checkbox').checked;
+        
+        if (deadline && deadline < today && !isCompleted && status !== 'completed') {
+            card.style.display = '';
+            card.classList.add('overdue');
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
+}
+
+function clearFilters(event) {
+    currentFilter = null;
+    document.querySelectorAll('.task-card').forEach(card => {
+        card.style.display = '';
+        card.classList.remove('overdue');
+    });
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
+}
+
+// Сортировка
+function sortTasks() {
+    const sortBy = document.getElementById('sort-select').value;
+    if (!sortBy) return;
+    
+    currentSort = sortBy;
+    
+    document.querySelectorAll('.tasks-container').forEach(container => {
+        const tasks = Array.from(container.querySelectorAll('.task-card'));
+        
+        tasks.sort((a, b) => {
+            if (sortBy === 'status') {
+                const statusOrder = { 'completed': 0, 'on_review': 1, 'in_progress': 2, 'not_started': 3 };
+                return statusOrder[a.getAttribute('data-status')] - statusOrder[b.getAttribute('data-status')];
+            } else if (sortBy === 'deadline') {
+                const deadlineA = a.getAttribute('data-deadline') || '9999-12-31';
+                const deadlineB = b.getAttribute('data-deadline') || '9999-12-31';
+                return deadlineA.localeCompare(deadlineB);
+            } else if (sortBy === 'responsible') {
+                const respA = a.getAttribute('data-responsible-id') || '';
+                const respB = b.getAttribute('data-responsible-id') || '';
+                return respA.localeCompare(respB);
+            }
+            return 0;
+        });
+        
+        tasks.forEach(task => container.appendChild(task));
+    });
+}
+
+// Обновление прогресса
+function updateProgress() {
+    const totalTasks = document.querySelectorAll('.task-card').length;
+    const completedTasks = document.querySelectorAll('.task-checkbox:checked').length;
+    
+    document.getElementById('total-count').textContent = totalTasks;
+    document.getElementById('completed-count').textContent = completedTasks;
+    
+    const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    document.getElementById('progress-bar').style.width = percentage + '%';
+}
+
+// Сохранение в localStorage
+function saveToLocalStorage() {
+    const data = {
+        checklist_id: CHECKLIST_ID,
+        timestamp: new Date().toISOString()
+    };
+    
+    // Сохраняем состояние всех задач
+    const tasks = [];
+    document.querySelectorAll('.task-card').forEach(card => {
+        const taskId = card.getAttribute('data-task-id');
+        const checkbox = card.querySelector('.task-checkbox');
+        const status = card.querySelector('select[onchange*="status"]').value;
+        const responsible = card.querySelector('select[onchange*="responsible"]').value;
+        const deadline = card.querySelector('input[type="date"]').value;
+        const comment = card.querySelector('textarea')?.value || '';
+        
+        tasks.push({
+            id: taskId,
+            is_completed: checkbox.checked,
+            status: status,
+            responsible: responsible,
+            deadline: deadline,
+            comment: comment
+        });
+    });
+    
+    data.tasks = tasks;
+    localStorage.setItem(`forum_checklist_${CHECKLIST_ID}`, JSON.stringify(data));
+}
+
+// Загрузка из localStorage
+function loadFromLocalStorage() {
+    const saved = localStorage.getItem(`forum_checklist_${CHECKLIST_ID}`);
+    if (!saved) return;
+    
+    try {
+        const data = JSON.parse(saved);
+        data.tasks.forEach(taskData => {
+            const card = document.querySelector(`[data-task-id="${taskData.id}"]`);
+            if (!card) return;
+            
+            const checkbox = card.querySelector('.task-checkbox');
+            if (checkbox) checkbox.checked = taskData.is_completed;
+            
+            const statusSelect = card.querySelector('select[onchange*="status"]');
+            if (statusSelect) statusSelect.value = taskData.status;
+            
+            const responsibleSelect = card.querySelector('select[onchange*="responsible"]');
+            if (responsibleSelect) responsibleSelect.value = taskData.responsible;
+            
+            const deadlineInput = card.querySelector('input[type="date"]');
+            if (deadlineInput) deadlineInput.value = taskData.deadline;
+            
+            const commentTextarea = card.querySelector('textarea');
+            if (commentTextarea) commentTextarea.value = taskData.comment || '';
+        });
+        
+        updateProgress();
+    } catch (e) {
+        console.error('Ошибка загрузки из localStorage:', e);
+    }
+}
+
+// Экспорт данных
+function exportData() {
+    fetch(`/events/forum-checklist/${CHECKLIST_ID}/ajax/`)
+        .then(response => response.json())
+        .then(data => {
+            const jsonStr = JSON.stringify(data, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `forum_checklist_${CHECKLIST_ID}_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        })
+        .catch(error => console.error('Ошибка экспорта:', error));
+}
+
+// Импорт данных
+function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            // TODO: Реализовать импорт данных
+            alert('Импорт данных будет реализован в следующей версии');
+        } catch (error) {
+            alert('Ошибка при чтении файла: ' + error.message);
+        }
+    };
+    reader.readAsText(file);
+}
+</script>
+{% endblock %}

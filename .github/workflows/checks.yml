@@ -1,0 +1,22 @@
+name: Clean installation
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/check_distribution.py
+      - run: pip install -r requirements.txt
+      - run: python -c "import secrets,pathlib; pathlib.Path('.env').write_text('SECRET_KEY='+secrets.token_urlsafe(64)+'\nSITE_URL=http://localhost:8080\nALLOWED_HOSTS=localhost,testserver\nDOMAIN=localhost\n')"
+      - run: python manage.py migrate --noinput
+      - run: python manage.py check
+      - run: python manage.py collectstatic --noinput
+      - run: python manage.py test accounts.tests_portable
+      - run: docker compose config --quiet
+      - run: docker build -t workspace-ci .
+      - run: docker run --rm --env-file .env workspace-ci python manage.py check

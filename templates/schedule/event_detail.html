@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}{{ event.title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ event.title }}</h1>
+        <div>
+            {% if can_edit_event %}
+            <a href="{% url 'schedule_event_update' event.id %}" class="btn btn-secondary">
+                <i class="bi bi-pencil"></i> Редактировать
+            </a>
+            <form class="d-inline" method="post" action="{% url 'schedule_event_delete' event.pk %}" onsubmit="return confirm('Удалить событие из календаря?')">{% csrf_token %}<button class="btn btn-outline-danger" type="submit">Удалить</button></form>
+            {% endif %}
+        </div>
+    </div>
+
+    <a href="{% url 'schedule_main' %}" class="btn btn-outline-secondary mb-3">Вернуться к календарю</a>
+    {% if event.related_task_id %}<p>Событие связано с задачей. Измените дату в <a href="{% url 'task_detail' event.related_task_id %}">карточке задачи</a>.</p>{% elif event.related_meropriyatie_id %}<p>Это событие создано из мероприятия; изменяйте его в разделе «Мероприятия».</p>{% endif %}
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-file-text"></i> Описание</h5>
+                </div>
+                <div class="card-body">
+                    <p>{{ event.description|default:"Описание отсутствует"|linebreaks }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-info-circle"></i> Информация</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Тип:</strong><br>{{ event.get_event_type_display }}</p>
+                    <p><strong>Отдел:</strong><br>{{ event.department.name }}</p>
+                    <p><strong>Начало:</strong><br>{{ event.start_time|date:"d.m.Y H:i" }}</p>
+                    <p><strong>Окончание:</strong><br>{{ event.end_time|date:"d.m.Y H:i" }}</p>
+                    <p><strong>Место:</strong><br>{{ event.location|default:"Не указано" }}</p>
+                    <p><strong>Создал:</strong><br>
+                        {{ event.created_by.get_full_name|default:event.created_by.username }}
+                    </p>
+                    {% if event.participants.all %}
+                    <p><strong>Участники:</strong><br>
+                        {% for participant in event.participants.all %}
+                        {{ participant.get_full_name|default:participant.username }}{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

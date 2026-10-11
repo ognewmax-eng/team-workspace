@@ -1,0 +1,8 @@
+{% extends 'admin/base_site.html' %}{% load i18n static admin_interface_tags %}
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title }}{% endblock %}
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'css/admin-workspace.css' %}?v=6.1">{% endblock %}
+{% block branding %}<a class="yam-admin-brand" href="{% url 'admin:index' %}"><span class="yam-admin-logo" aria-hidden="true">{{ organization_name|first }}</span><span><strong>{{ organization_name }}</strong><small>Администрирование</small></span></a>{% endblock %}
+{% block welcome-msg %}<strong>{{ user.get_short_name|default:user.get_username }}</strong>{% endblock %}
+{% block nav-global %}{% endblock %}
+{% block blockbots %}<meta name="robots" content="NONE,NOARCHIVE">{% get_admin_interface_theme as theme %}{% include 'admin_interface/favicon.html' %}{% include 'admin_interface/foldable-apps.html' %}{% include 'admin_interface/related-modal.html' %}{% include 'admin_interface/collapsible-inlines.html' %}{% endblock %}
+{% block footer %}<footer class="yam-admin-footer">{{ organization_name }}</footer>{% endblock %}

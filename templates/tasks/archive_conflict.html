@@ -1,0 +1,3 @@
+{% extends 'base.html' %}
+{% block title %}Обновите список задач{% endblock %}
+{% block content %}<div class="container"><section class="card"><div class="card-body"><h1>Список задач изменился</h1><p>Кто-то обновил задачу или её подзадачи, либо база сейчас занята. Вся операция остановлена; ни одна задача из этой партии не перенесена.</p><p>Обновите список, выберите задачи и подтвердите действие ещё раз.</p><a href="{% url 'task_list' %}" class="btn btn-primary">Открыть задачи</a><a href="{% url 'task_archive' %}" class="btn btn-outline-secondary">Открыть архив</a></div></section></div>{% endblock %}

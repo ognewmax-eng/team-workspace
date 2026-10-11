@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Одобрить пользователя{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5><i class="bi bi-check-circle"></i> Одобрить регистрацию</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        Вы собираетесь активировать аккаунт пользователя. После активации пользователь сможет войти в систему.
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6>Информация о пользователе:</h6>
+                        <table class="table table-bordered">
+                            <tr>
+                                <th width="30%">Имя пользователя:</th>
+                                <td><strong>{{ user.username }}</strong></td>
+                            </tr>
+                            <tr>
+                                <th>ФИО:</th>
+                                <td>{{ user.get_full_name|default:"Не указано" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Email:</th>
+                                <td>{{ user.email|default:"Не указан" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Роль:</th>
+                                <td>
+                                    <span class="badge bg-{% if user.role == 'director' %}danger{% elif user.role == 'head' %}warning{% else %}info{% endif %}">
+                                        {{ user.get_role_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Отдел:</th>
+                                <td>{{ user.department.name|default:"Не назначен" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Должность:</th>
+                                <td>{{ user.position|default:"Не указана" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Телефон:</th>
+                                <td>{{ user.phone|default:"Не указан" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Дата регистрации:</th>
+                                <td>{{ user.date_joined|date:"d.m.Y H:i" }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-circle"></i> Одобрить и активировать
+                            </button>
+                            <a href="{% url 'pending_registrations' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Отмена
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+

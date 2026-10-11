@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.py[cod]
+data/
+media/
+staticfiles/
+logs/
+*.sqlite3
+*.sqlite3-*
+*.tar.gz
+*credentials*.json
+synology.json

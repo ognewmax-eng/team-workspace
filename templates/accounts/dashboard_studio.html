@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Мой день · {{ organization_name }}{% endblock %}
+{% block content %}
+<div class="studio-page">
+  <section class="studio-page-heading">
+    <div><div class="studio-eyebrow">РАБОЧЕЕ ПРОСТРАНСТВО</div><h1>Мой день<span class="studio-heading-dot">.</span></h1><p>{{ studio_now|date:"l, j E" }}</p></div>
+    <a href="{% url 'task_create' %}" class="btn btn-primary studio-create"><i class="bi bi-plus-lg"></i> Создать задачу</a>
+  </section>
+  <p class="studio-greeting">Здравствуйте, {{ user.first_name|default:user.username }}. Всё важное — перед вами.</p>
+  <section class="studio-metrics" aria-label="Обзор дня">
+    <article class="studio-metric"><span class="studio-metric-icon"><i class="bi bi-check2-square"></i></span><div><strong>{{ studio_active }}</strong><span>{% if studio_team %}Активных задач {% if user.is_director %}организации{% else %}отдела{% endif %}{% else %}Моих активных задач{% endif %}</span></div></article>
+    <article class="studio-metric"><span class="studio-metric-icon is-amber"><i class="bi bi-exclamation-circle"></i></span><div><strong>{{ studio_overdue }}</strong><span>Просроченных задач</span></div></article>
+    <article class="studio-metric"><span class="studio-metric-icon"><i class="bi bi-calendar3"></i></span><div><strong>{{ studio_agenda_count }}</strong><span>Событий и занятий сегодня</span></div></article>
+  </section>
+  <div class="studio-dashboard-grid">
+    <section class="studio-panel studio-task-panel">
+      <div class="studio-panel-heading"><h2>Задачи в фокусе</h2><a href="{% url 'task_list' %}">Все задачи <i class="bi bi-arrow-up-right"></i></a></div>
+      <nav class="studio-tabs" aria-label="Область задач"><a href="{% url 'dashboard' %}" class="{% if not studio_team %}is-active{% endif %}" {% if not studio_team %}aria-current="page"{% endif %}>Мои задачи</a>{% if studio_can_use_team %}<a href="{% url 'dashboard' %}?scope=department" class="{% if studio_team %}is-active{% endif %}" {% if studio_team %}aria-current="page"{% endif %}>{% if user.is_director %}Организация{% else %}Отдел{% endif %}</a>{% endif %}</nav>
+      <div class="studio-task-list">
+      {% for task in studio_tasks %}
+        <a class="studio-task-row" href="{% url 'task_detail' task.pk %}">
+          <span class="studio-task-mark" aria-hidden="true"><i class="bi bi-circle"></i></span>
+          <div class="studio-task-title"><strong>{{ task.title }}</strong><small>{% for assignee in task.assigned_to.all|slice:":2" %}{{ assignee.get_full_name|default:assignee.username }}{% if not forloop.last %}, {% endif %}{% empty %}Без исполнителя{% endfor %}</small></div>
+          <span class="studio-task-deadline {% if task.is_overdue %}is-overdue{% endif %}">{% if task.deadline %}{{ task.deadline|date:"d.m · H:i" }}{% else %}Без срока{% endif %}</span>
+          <span class="studio-status {% if task.is_overdue %}status-overdue{% else %}status-{{ task.status }}{% endif %}">{% if task.is_overdue %}<i class="bi bi-clock"></i> Просрочена{% elif task.status == 'in_progress' %}<i class="bi bi-gear"></i> {{ task.get_status_display }}{% elif task.status == 'pending' %}<i class="bi bi-eye"></i> {{ task.get_status_display }}{% else %}<i class="bi bi-file-earmark"></i> {{ task.get_status_display }}{% endif %}</span>
+        </a>
+      {% empty %}<div class="studio-empty"><i class="bi bi-check2-circle"></i><strong>Здесь пока нет активных задач</strong><p>Новые поручения появятся в этом списке.</p></div>{% endfor %}
+      </div>
+    </section>
+    <section class="studio-panel studio-agenda-panel">
+      <div class="studio-panel-heading"><h2>Расписание</h2><span class="studio-today">Сегодня</span></div>
+      <div class="studio-agenda">
+      {% for item in studio_agenda %}<div class="studio-agenda-row"><time>{{ item.time|time:"H:i" }}</time><span class="studio-agenda-dot" aria-hidden="true"></span><div>{% if item.event_id %}<a href="{% url 'schedule_event_detail' item.event_id %}">{{ item.title }}</a>{% else %}<a href="{% url 'lessons_schedule' %}">{{ item.title }}</a>{% endif %}<small>{{ item.subtitle }}</small></div></div>{% empty %}<div class="studio-empty"><i class="bi bi-calendar2-check"></i><strong>Сегодня без событий</strong><p>Посмотрите расписание на другие дни.</p></div>{% endfor %}
+      </div><a class="studio-panel-footer" href="{% url 'schedule_main' %}">Открыть расписание <i class="bi bi-arrow-right"></i></a>
+    </section>
+    <section class="studio-panel">
+      <div class="studio-panel-heading"><h2>Последние уведомления</h2><a href="{% url 'notifications' %}">Все</a></div>
+      {% for item in studio_updates %}<div class="studio-update"><span class="studio-update-icon"><i class="bi bi-bell"></i></span><div><p>{{ item.message }}</p><small>{{ item.created_at|timesince }} назад</small></div></div>{% empty %}<div class="studio-empty"><p>Новых уведомлений пока нет.</p></div>{% endfor %}
+    </section>
+    <section class="studio-next-card"><div class="studio-eyebrow">БЛИЖАЙШЕЕ СОБЫТИЕ</div>{% if studio_next_event %}<h2>{{ studio_next_event.title }}</h2><p><i class="bi bi-calendar3"></i> {{ studio_next_event.start_time|date:"j E · H:i" }}</p><a class="btn btn-primary" href="{% url 'schedule_event_detail' studio_next_event.pk %}">Открыть событие <i class="bi bi-arrow-up-right"></i></a>{% else %}<h2>Планируйте заранее</h2><p>Ближайших событий пока нет.</p><a class="btn btn-primary" href="{% url 'schedule_main' %}">Открыть расписание</a>{% endif %}</section>
+  </div>
+</div>
+{% endblock %}

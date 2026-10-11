@@ -1,0 +1,8 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#f7f8fc;color:#202337;font-family:Arial,sans-serif;padding:24px 12px">
+<table role="presentation" style="width:100%;max-width:600px;margin:0 auto;border-collapse:collapse"><tr><td style="padding:12px 8px 24px;font-size:25px;font-weight:bold;color:#202337">{{ organization_name }}<span style="color:#7045dd">.</span><div style="font-size:12px;font-weight:normal;color:#626b80;margin-top:6px">{{ organization_name }}</div></td></tr>
+<tr><td style="background:#fff;border:1px solid #e3e6ef;border-radius:14px;padding:28px">
+{% if test %}<p style="color:#6640cc;font-size:13px">Тестовое письмо — массовая рассылка ещё не запущена.</p>{% endif %}
+<h1 style="font-size:22px;line-height:1.4;margin:0 0 20px;color:#202337">{{ campaign.subject }}</h1>
+<div style="font-size:15px;line-height:1.7;color:#394057;overflow-wrap:anywhere">{{ campaign.body|linebreaksbr }}</div>
+<p style="margin:28px 0 0"><a href="{{ site_url }}" style="display:inline-block;background:#7045dd;color:#fff;text-decoration:none;padding:13px 20px;border-radius:8px;font-size:14px">Открыть рабочее пространство</a></p>
+</td></tr><tr><td style="padding:18px 8px;color:#626b80;font-size:12px;line-height:1.6">Рабочее сообщение для пользователей сайта {{ site_url }}.<br>Можно ответить на это письмо.</td></tr></table></body></html>

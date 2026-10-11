@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% load static %}
+{% block title %}Календарь · {{ organization_name }}{% endblock %}
+{% block extra_css %}<link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet"><link href="{% static 'css/planner.css' %}?v=3" rel="stylesheet">{% endblock %}
+{% block content %}<div class="planner-workspace" data-calendar data-user="{{ user.pk }}" data-now="{{ calendar_now }}" data-feed="{% url 'schedule_events_json' %}" data-initial="{{ calendar_initial }}" data-create="{% if can_create_event %}{% url 'schedule_event_create' %}{% endif %}">
+<header class="planner-heading"><div><span class="planner-eyebrow">ОБЩИЙ ОБЗОР</span><h1>Календарь<span>.</span></h1><p>Встречи, мероприятия, задачи и занятия — в одном месте.</p></div><div class="planner-actions"><a href="{% url 'lessons_schedule' %}" class="btn btn-outline-secondary"><i class="bi bi-calendar-week"></i> Типовая неделя</a>{% if can_create_event %}<a href="{% url 'schedule_event_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Новое событие</a>{% endif %}</div></header>
+{% include 'schedule/includes/calendar_filters.html' %}
+<div class="planner-info"><span><i class="bi bi-clock"></i> Время сайта: {{ calendar_timezone }}</span><span>Занятия повторяются по типовой неделе; редактируются в разделе «Занятия».</span></div>
+<div class="planner-feedback" data-planner-feedback role="status" aria-live="polite" hidden></div>
+<div class="planner-calendar-panel"><div id="planner-calendar"></div></div>
+<a href="{% url 'schedule_list' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}" class="planner-fallback">Открыть повестку без календарной сетки <i class="bi bi-arrow-right"></i></a>
+</div>{% endblock %}
+{% block extra_js %}<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/ru.js" defer></script><script src="{% static 'js/planner-calendar.js' %}?v=3" defer></script>{% endblock %}

@@ -1,0 +1,2 @@
+# Migrations for schedule app
+

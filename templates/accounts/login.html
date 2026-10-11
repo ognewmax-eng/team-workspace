@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Вход — {{ organization_name }}{% endblock %}
+{% block content %}
+<div class="auth-shell">
+    <a class="auth-brand" href="{% url 'login' %}">{{ organization_name }}<span>.</span><small>{{ organization_name }}</small></a>
+    <section class="auth-panel" aria-labelledby="auth-title">
+        <div class="auth-symbol"><i class="bi bi-check2-square" aria-hidden="true"></i></div>
+        <h1 id="auth-title">Добро пожаловать</h1>
+        <p class="auth-intro">Войдите в рабочее пространство команды.</p>
+        <form method="post">
+            {% csrf_token %}
+            <div class="auth-field"><label for="id_username">Логин</label><input class="form-control" type="text" name="username" id="id_username" value="{{ request.POST.username }}" autocomplete="username" required autofocus></div>
+            <div class="auth-field"><label for="id_password">Пароль</label><input class="form-control" type="password" name="password" id="id_password" autocomplete="current-password" required></div>
+            <button class="btn btn-primary auth-submit" type="submit">Войти <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+        </form>
+        <p class="auth-footnote">Нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a></p>
+    </section>
+    <p class="auth-caption">Задачи, мероприятия и материалы — в одном месте.</p>
+</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}{% load static %}
+{% block title %}Канбан · {{ organization_name }}{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/task-bulk-v7.css' %}"><link rel="stylesheet" href="{% static 'css/task-workspace.css' %}?v=2">{% endblock %}
+{% block content %}
+<div class="task-workspace" data-workspace="board" data-user-id="{{ user.pk }}">
+{% include "tasks/includes/toolbar.html" %}
+<div class="task-board-scroll"><div class="task-board">
+{% for column in board_columns %}<section class="task-board-column" data-column="{{ column.status }}" aria-label="{{ column.label }}">
+  <header><span class="task-column-dot dot-{{ column.status }}"></span><h2>{{ column.label }}</h2><span class="task-column-count" data-column-count>{{ column.count }}</span></header>
+  <div class="task-board-cards" data-status="{{ column.status }}">
+    {% for task in column.tasks %}<article class="task-board-card {% if task.is_overdue %}has-overdue{% endif %}" data-task-id="{{ task.pk }}" data-version="{{ task.ui_version }}" data-task-status="{{ task.status }}" data-editable="{{ task.ui_can_change|yesno:'true,false' }}" data-update-url="{% url 'update_task_status' task.pk %}">
+      <div class="task-card-top"><span class="task-priority priority-{{ task.priority }}">{% if task.priority == 'urgent' %}<i class="bi bi-exclamation-circle"></i>{% else %}<i class="bi bi-flag"></i>{% endif %} {{ task.get_priority_display }}</span>{% if task.ui_can_change %}<button type="button" class="task-drag-handle" aria-label="Перетащить задачу" title="Перетащить"><i class="bi bi-grip-vertical"></i></button>{% endif %}</div>
+      <a class="task-card-title" href="{% url 'task_detail' task.pk %}">{{ task.title }}</a>
+      <p class="task-card-description">{{ task.description|striptags|truncatechars:95|default:'Без описания' }}</p>
+      <div class="task-card-departments">{% for department in task.departments.all %}<span>{{ department.name }}</span>{% empty %}<span>{{ task.department.name|default:'Без отдела' }}</span>{% endfor %}</div>
+      <div class="task-card-people"><i class="bi bi-person"></i>{% for person in task.assigned_to.all|slice:':2' %}<span>{{ person.get_full_name|default:person.username }}{% if not forloop.last %}, {% endif %}</span>{% empty %}<span>Без исполнителя</span>{% endfor %}{% if task.ui_total > 2 %}<span title="Все исполнители показаны в карточке задачи">+{{ task.ui_total|add:'-2' }}</span>{% endif %}</div>
+      <div class="task-card-meta"><span class="{% if task.is_overdue %}task-overdue{% endif %}"><i class="bi bi-clock"></i> {% if task.is_overdue %}Просрочена · {% endif %}{{ task.deadline|date:'d.m · H:i'|default:'Без срока' }}</span><span title="Комментарии"><i class="bi bi-chat"></i> {{ task.comment_count }}</span><span title="Файлы"><i class="bi bi-paperclip"></i> {{ task.attachment_count }}</span></div>
+      {% if task.ui_total %}<div class="task-assignee-progress"><i class="bi bi-check2-all"></i> Завершили: {{ task.ui_done }} из {{ task.ui_total }}</div>{% endif %}
+      {% if task.parent_task_id %}<span class="task-subtask-label"><i class="bi bi-diagram-2"></i> Подзадача</span>{% endif %}
+      {% include "tasks/includes/status_control.html" %}
+    </article>{% endfor %}
+    <p class="task-column-empty" {% if column.tasks %}hidden{% endif %}>В этой колонке пока нет задач</p>
+  </div>
+  {% if column.more %}<a class="task-column-more" href="{% url 'task_list' %}{{ column.list_query }}">Показаны первые 60 · открыть все {{ column.count }}</a>{% endif %}
+</section>{% endfor %}
+</div></div>
+<div class="task-status-note"><i class="bi bi-info-circle"></i> Если исполнителей несколько, общий статус может отличаться от вашего. Задача завершится, когда завершат все исполнители. Статус, зафиксированный директором, сохраняется.</div>
+</div>
+{% endblock %}
+{% block extra_js %}<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js" defer></script><script src="{% static 'js/task-workspace.js' %}?v=2" defer></script>{% endblock %}

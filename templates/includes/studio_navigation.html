@@ -1,0 +1,37 @@
+<a class="studio-skip" href="#main-content">Перейти к содержимому</a>
+<button type="button" class="studio-backdrop" data-sidebar-close aria-label="Закрыть меню"></button>
+<aside id="studio-sidebar" class="studio-sidebar" aria-label="Основное меню">
+  <a class="studio-brand" href="{% url 'dashboard' %}"><strong>{{ organization_name }}<span>.</span></strong><small>Рабочее пространство</small></a>
+  <nav class="studio-nav">
+    <a href="{% url 'dashboard' %}"><i class="bi bi-house-door"></i> Мой день</a>
+    <a href="{% url 'task_list' %}"><i class="bi bi-check2-square"></i> Задачи</a>
+    <a href="{% url 'kanban' %}"><i class="bi bi-columns-gap"></i> Канбан</a>
+    <span class="studio-nav-label">ПЛАНИРОВАНИЕ</span>
+    <a href="{% url 'schedule_main' %}"><i class="bi bi-calendar3"></i> Календарь</a>
+    <a href="{% url 'lessons_schedule' %}"><i class="bi bi-calendar-week"></i> Занятия</a>
+    {% if meropriyatie_list_url %}<a href="{{ meropriyatie_list_url }}"><i class="bi bi-people"></i> Мероприятия</a>{% endif %}
+    <span class="studio-nav-label">МАТЕРИАЛЫ</span>
+    {% if user.is_director or user.is_head %}<a href="{% url 'document_list' %}"><i class="bi bi-folder2-open"></i> Документы</a>{% endif %}
+    <a href="{% url 'wiki_list' %}"><i class="bi bi-book"></i> База знаний</a>
+    {% if user.is_director %}<a href="{% url 'analytics_dashboard' %}"><i class="bi bi-bar-chart"></i> Аналитика</a>{% endif %}
+    {% if user.is_staff or user.is_superuser %}<a href="{% url 'pending_registrations' %}"><i class="bi bi-person-check"></i> Регистрации</a>{% endif %}
+  </nav>
+  <div class="studio-sidebar-bottom">
+    <a class="studio-user" href="{% url 'profile' %}"><span class="studio-avatar">{{ user.first_name|first|default:user.username|first }}{{ user.last_name|first }}</span><span><strong>{{ user.get_full_name|default:user.username }}</strong><small>{{ user.get_role_display }}</small></span></a>
+  </div>
+</aside>
+<header class="studio-topbar">
+  <button type="button" class="studio-menu-button" data-sidebar-toggle aria-controls="studio-sidebar" aria-expanded="false" aria-label="Открыть меню"><i class="bi bi-list"></i></button>
+  <span class="studio-topbar-caption">{{ organization_name }}</span>
+  <form class="studio-search" method="get" action="{% url 'task_list' %}" role="search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" name="search" aria-label="Поиск задач" placeholder="Поиск задач"><button type="submit" aria-label="Найти"><i class="bi bi-arrow-return-left"></i></button></form>
+  <a class="studio-icon-button" href="{% url 'notifications' %}" aria-label="Уведомления"><i class="bi bi-bell"></i></a>
+  <div class="dropdown">
+    <button class="studio-avatar studio-profile-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Меню профиля">{{ user.first_name|first|default:user.username|first }}{{ user.last_name|first }}</button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li><a class="dropdown-item" href="{% url 'profile' %}">Профиль</a></li>
+      {% if user.is_staff %}<li><a class="dropdown-item" href="{% url 'admin:index' %}">Админ-панель</a></li>{% endif %}
+      <li><hr class="dropdown-divider"></li>
+      <li><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit" class="dropdown-item">Выход</button></form></li>
+    </ul>
+  </div>
+</header>

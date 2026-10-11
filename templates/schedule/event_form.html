@@ -1,0 +1,92 @@
+{% extends "base.html" %}{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/planner.css' %}?v=3">{% endblock %}
+{% block content %}
+<div class="container planner-workspace">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="bi bi-calendar-plus"></i> {{ title }}</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+                        <div class="mb-3">
+                            <label for="{{ form.title.id_for_label }}" class="form-label">Название события *</label>
+                            {{ form.title }}
+                            {% if form.title.errors %}
+                            <div class="text-danger">{{ form.title.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">Описание</label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                            <div class="text-danger">{{ form.description.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.event_type.id_for_label }}" class="form-label">Тип события</label>
+                                {{ form.event_type }}
+                                {% if form.event_type.errors %}
+                                <div class="text-danger">{{ form.event_type.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.department.id_for_label }}" class="form-label">Отдел *</label>
+                                {{ form.department }}
+                                {% if form.department.errors %}
+                                <div class="text-danger">{{ form.department.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.start_time.id_for_label }}" class="form-label">Дата и время начала *</label>
+                                {{ form.start_time }}
+                                {% if form.start_time.errors %}
+                                <div class="text-danger">{{ form.start_time.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.end_time.id_for_label }}" class="form-label">Дата и время окончания *</label>
+                                {{ form.end_time }}
+                                {% if form.end_time.errors %}
+                                <div class="text-danger">{{ form.end_time.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.location.id_for_label }}" class="form-label">Место проведения</label>
+                            {{ form.location }}
+                            {% if form.location.errors %}
+                            <div class="text-danger">{{ form.location.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.participants.id_for_label }}" class="form-label">Участники</label>
+                            <div class="planner-participants">{{ form.participants }}</div>
+                            <small class="form-text text-muted">Отметьте участников галочками.</small>
+                            {% if form.participants.errors %}
+                            <div class="text-danger">{{ form.participants.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'schedule_main' %}" class="btn btn-secondary">Отмена</a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check"></i> Сохранить
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

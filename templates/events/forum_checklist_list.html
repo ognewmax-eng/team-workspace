@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Чек-листы{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-list-check"></i> Чек-листы</h1>
+        <a href="{% url 'forum_checklist_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Создать чек-лист
+        </a>
+    </div>
+
+    <div class="row">
+        {% for checklist in checklists %}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">{{ checklist.title }}</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">{{ checklist.description|default:"Без описания" }}</p>
+                    <div class="mb-2">
+                        <strong>Прогресс:</strong> {{ checklist.get_completed_tasks_count }} / {{ checklist.get_total_tasks_count }} задач
+                        ({{ checklist.get_progress_percentage }}%)
+                    </div>
+                    <div class="progress mb-3">
+                        <div class="progress-bar" role="progressbar" 
+                             style="width: {{ checklist.get_progress_percentage }}%">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            Создано: {{ checklist.created_at|date:"d.m.Y H:i" }}
+                        </small>
+                        <a href="{% url 'forum_checklist' checklist.id %}" class="btn btn-sm btn-primary">
+                            Открыть
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> Чек-листов пока нет. 
+                <a href="{% url 'forum_checklist_create' %}">Создайте первый чек-лист</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
